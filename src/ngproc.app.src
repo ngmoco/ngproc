@@ -1,0 +1,12 @@
+{application, ngproc,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { ngproc_app, []}},
+  {env, []}
+ ]}.

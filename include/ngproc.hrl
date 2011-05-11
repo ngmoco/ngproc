@@ -1,0 +1,1 @@
+-define(NGPROC_NAMES, ngproc_names).
