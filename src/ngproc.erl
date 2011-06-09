@@ -7,9 +7,22 @@
 %%%-------------------------------------------------------------------
 -module(ngproc).
 
+-include("ngproc.hrl").
+
+-type name() :: number() | list() | tuple() | binary().
+-type resolver() :: atom().
+-type nameinfo() :: {name(), pid()}.
+-type namedata() :: [nameinfo()].
+
+-export_type([name/0
+              ,resolver/0
+              ,nameinfo/0
+              ,namedata/0
+             ]).
+
 %% API
 -export([whereis/1
-         ,register/3
+         ,register/2
          ,reregister/2
          ,unregister/1
         ]).
@@ -18,19 +31,20 @@
 %% API
 %%====================================================================
 
--spec whereis(Name::term()) -> pid() | 'undefined'.
+-spec whereis(ngproc:name()) -> pid() | 'undefined'.
 whereis(Name) ->
     ngproc_lib:whereis(Name).
 
--spec register(Name::term(), pid(), Resolver::atom()) -> 'ok' | {duplicate, pid()}.
-register(Name, Pid, Resolver) ->
-    ngproc_mgr:register(Name, Pid, Resolver).
+-spec register(ngproc:name(), pid()) ->
+                      'ok' | {duplicate, pid()}.
+register(Name, Pid) ->
+    ngproc_mgr:register(Name, Pid).
 
--spec reregister(Name::term(), pid()) -> 'ok'.
+-spec reregister(ngproc:name(), pid()) -> 'ok'.
 reregister(Name, NewPid) ->
     ngproc_mgr:reregister(Name, NewPid).
 
--spec unregister(Name::term()) -> 'ok'.
+-spec unregister(ngproc:name()) -> 'ok'.
 unregister(Name) ->
     ngproc_mgr:unregister(Name).
 

@@ -24,6 +24,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    Manager = ?CHILD(ngproc_mgr,worker),
+    Manager = {mgr, {ngproc_mgr, start_link, [ngproc, ngproc_resolver]},
+               permanent, 5000, worker, [ngproc_mgr]},
     {ok, { {one_for_one, 0, 1}, [Manager]} }.
 
