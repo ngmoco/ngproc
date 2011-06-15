@@ -24,8 +24,6 @@ behaviour_info(_) ->
 
 -spec resolve(ngproc:name(), pid(), pid()) -> pid().
 resolve(Name, PidA, PidB) ->
-    ?INFO("Resolved ~p in favour of ~p. ~p bites the dust.",
-          [Name, PidB, PidA]),
     exit(PidA, kill),
     PidB.
 
