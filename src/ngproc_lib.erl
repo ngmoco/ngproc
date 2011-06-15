@@ -15,7 +15,7 @@
 -include("ngproc.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
 
--compile({no_auto_import,[whereis/1]}).
+-compile({no_auto_import,[whereis/1, demonitor/1]}).
 
 %% API
 -export([init/0
@@ -28,12 +28,22 @@
          ,all_names/0
          ,local_names/0
          ,names_for_node/1
-         ,ref_info/1
          ,remove/2
          ,reg_for/1
-         ,sync_with/2
+         ,sync_with/3
          ,remove_node/1
+         ,dead_nodes/1
+         ,cleanup_pid/1
+         ,compare/1
         ]).
+
+-export([sync_actions/2]).
+
+%%
+%% NGPROC_NAMES table records:
+%%   name -> pid :: {reg, Name, Pid}
+%%   {Pid,Name} :: {rev, {Pid, Name}}
+%%   pid -> monitor :: {mon, Pid, ref}
 
 %%====================================================================
 %% API
@@ -41,7 +51,7 @@
 
 init() ->
     ets:new(?NGPROC_NAMES,
-                  [named_table, {keypos, #reg.name}, protected, ordered_set]).
+            [named_table, {keypos, 2}, protected, ordered_set]).
 
 %% whereis, name_info and reg_for are the only concurrent safe(ish)
 %% operations in ngproc_lib.
@@ -74,30 +84,19 @@ reg_for(Name) ->
 -spec register(ngproc:name(), pid()) ->
                       'registered' | {'duplicate', pid()}.
 register(Name, Pid)
-  when node(Pid) =/= node(),
-       not is_reference(Name) ->
+  when not is_reference(Name),
+       not is_pid(Name) ->
     case ets:insert_new(?NGPROC_NAMES,
-                        [#reg{name=Name, pid=Pid}]) of
-        true ->
+                        [#reg{name=Name, pid=Pid},
+                         #rev{key={Pid, Name}}]) of
+        true when node(Pid) =:= node() ->
+            ensure_monitor(Pid),
+            registered;
+        true when node(Pid) =/= node() ->
             registered;
         false ->
-            {duplicate, whereis(Name)}
-    end;
-register(Name, Pid)
-  when node(Pid) =:= node(),
-       not is_reference(Name) ->
-    %% XXX monitoring before success? why
-    Ref = erlang:monitor(process, Pid),
-    case ets:insert_new(?NGPROC_NAMES,
-                        [#reg{name=Name, pid=Pid, ref=Ref},
-                         #ref{r=Ref, name=Name}]) of
-        true ->
-            registered;
-        false ->
-            erlang:demonitor(Ref, [flush]),
             {duplicate, whereis(Name)}
     end.
-
 
 reregister(Name, NewPid) ->
     reregister(Name, NewPid,
@@ -118,37 +117,36 @@ reregister(Name, NewPid,
 
 %% Pid changes
 reregister(Name, NewPid,
-           #reg{name=Name, pid=OldPid, ref=Ref}) ->
-    case node(OldPid) =:= node() of
-        true when is_reference(Ref) ->
-            ets:delete(?NGPROC_NAMES, Ref),
-            erlang:demonitor(Ref, [flush]);
-        _ -> ok
+           #reg{name=Name, pid=OldPid}) ->
+    WasOurs = node(OldPid) =:= node(),
+    IsOurs = node(NewPid) =:= node(),
+    %% Fixup #reg
+    ets:update_element(?NGPROC_NAMES,
+                       Name,
+                       [{#reg.pid, NewPid}]),
+    %% Fixup #rev
+    ets:delete(?NGPROC_NAMES,
+               {OldPid, Name}),
+    ets:insert(?NGPROC_NAMES,
+               #rev{key={NewPid, Name}}),
+    %% Fixup #mon
+    case WasOurs of
+        true -> maybe_demonitor(OldPid);
+        false -> ok
     end,
-    case node(NewPid) =:= node() of
-        true ->
-            NewRef = erlang:monitor(process, NewPid),
-            ets:update_element(?NGPROC_NAMES,
-                               Name,
-                               [{#reg.pid, NewPid},
-                                {#reg.ref, NewRef}]),
-            ets:insert(?NGPROC_NAMES, #ref{r=NewRef, name=Name});
-        false ->
-            ets:update_element(?NGPROC_NAMES,
-                               Name,
-                               [{#reg.pid, NewPid},
-                                {#reg.ref, undefined}])
+    case IsOurs of
+        true -> ensure_monitor(NewPid);
+        false -> ok
     end,
+    %% All done
     {reregistered, OldPid}.
 
 unregister(Name) ->
     case reg_for(Name) of
-        #reg{name=Name, pid=OldPid, ref=Ref}
-          when is_reference(Ref), node(OldPid) =:= node() ->
-            erlang:demonitor(Ref, [flush]),
-            true = ets:delete(?NGPROC_NAMES, Name);
-        #reg{} ->
-            true = ets:delete(?NGPROC_NAMES, Name);
+        #reg{name=Name, pid=OldPid} ->
+            ets:delete(?NGPROC_NAMES, Name),
+            ets:delete(?NGPROC_NAMES, {OldPid, Name}),
+            maybe_demonitor(OldPid);
         not_registered -> ok
     end,
     unregistered.
@@ -157,20 +155,20 @@ unregister(Name) ->
 all_names() ->
     {v1,
      ets:select(?NGPROC_NAMES,
-                [{list_to_tuple([reg, '$1', '$2', '_']),
+                [{list_to_tuple([reg, '$1', '$2']),
                   [],
                   [{{'$1','$2'}}]}])}.
                 %% ets:fun2ms(fun (#reg{name=Name,pid=Pid}) ->
                 %%                    {Name,Pid}
                 %%            end))}.
 
--spec local_names() -> ngproc:namedata().
-local_names() -> names_for_node(node()).
+-spec local_names() -> {'v1', ngproc:namedata()}.
+local_names() -> {v1, names_for_node(node())}.
 
 -spec names_for_node(node()) -> ngproc:namedata().
 names_for_node(Node) ->
     ets:select(?NGPROC_NAMES,
-               [{list_to_tuple([reg, '$1', '$2', '_']),
+               [{list_to_tuple([reg, '$1', '$2']),
                  [{'=:=',{node,'$2'},Node}],
                  [{{'$1','$2'}}]}]).
                %% ets:fun2ms(fun ({reg, Name, Pid, '_'})
@@ -178,41 +176,59 @@ names_for_node(Node) ->
                %%                    {Name, Pid}
                %%            end)).
 
--spec ref_info(reference()) ->
-                      'no_such_ref' | {#ref{}, #reg{}}.
-ref_info(Ref) when is_reference(Ref), node(Ref) =:= node() ->
-    case ets:lookup(?NGPROC_NAMES, Ref) of
-        [RefR = #ref{r=Ref, name=Name}] ->
-            case ets:lookup(?NGPROC_NAMES, Name) of
-                [RegR = #reg{name=Name}] ->
-                    {RefR, RegR};
-                _ ->
-                    exit({missing_reg_for, RefR})
-            end;
-        _ ->
-            no_such_ref
-    end.
-
-remove(RefR, RegR) ->
+remove(RefR = #rev{}, RegR = #reg{}) ->
     ets:delete_object(?NGPROC_NAMES, RefR),
     ets:delete_object(?NGPROC_NAMES, RegR),
     ok.
 
+remove_name(Name) ->
+    ets:delete(?NGPROC_NAMES, Name).
+remove_names(Names) ->
+    lists:map(fun remove_name/1, Names).
+
+update_names(NameData) ->
+    [ reregister(Name, NewPid)
+      || {register, Name, NewPid} <- NameData ],
+    ok.
+
+resolve_name(Name, A, B, Resolver) when is_pid(A), is_pid(B) ->
+    Pid = Resolver:resolve(Name, A, B),
+    reregister(Name, Pid),
+    {register, Name, Pid}.
+
+resolve_names(NameData, Resolver) ->
+    [ resolve_name(Name, A, B, Resolver)
+      || {{Name, A}, {Name, B}} <- NameData ].
+
 %% Missing - names local has that remote doesn't
 %% Added - names remote has that we don't
 %% Similar - names in common
--spec sync_with(node(), ngproc:namedata()) ->
+-spec sync_with(node(), {'v1', ngproc:namedata()},
+                ngproc_resolver()) ->
                        {InSync::ngproc:namedata(),
                         Update::ngproc:namedata(),
                         Conflict::[{Sync::ngproc:nameinfo(),
                                     Existing::ngproc:nameinfo()}],
                         Dropped::ngproc:namedata()}.
-sync_with(Node, NameData) ->
+sync_with(Node, {v1, NameData}, Resolver) ->
+    {InSync,
+     Update,
+     Conflicts,
+     Dropped} = sync_actions(Node, {v1, NameData}),
+    update_names(Update),
+    remove_names(Dropped),
+    %% XXX - Terrible interface, will run in process and block.
+    Resolution = resolve_names(Conflicts, Resolver),
+    %% Ignore InSync names
+    {InSync, Update, Resolution, Dropped}.
+
+
+sync_actions(Node, {v1, NameData}) ->
     Actions = lists:foldl(fun sync_one_name/2, [], NameData),
-    {[NI || {same, NI} <- Actions],
-     [NI || {accept, NI} <- Actions],
+    {[{register, Name, Pid} || {same, {Name, Pid}} <- Actions],
+     [{register, Name, Pid} || {accept, {Name, Pid}} <- Actions],
      [{NI, Conflict} || {resolve, NI, Conflict} <- Actions],
-     stale_names(NameData, names_for_node(Node))
+     [{unregister, Name} || Name <- stale_names(NameData, names_for_node(Node))]
     }.
 
 sync_one_name({Name, Pid} = NI, Acc) ->
@@ -231,19 +247,114 @@ sync_one_name({Name, Pid} = NI, Acc) ->
     end.
 
 stale_names(TheirNameData, OurNameData) ->
-    OurNames = dict:from_list(OurNameData),
-    TheirNames = dict:from_list(TheirNameData),
-    Ours = sets:from_list(dict:fetch_keys(OurNames)),
-    Theirs = sets:from_list(dict:fetch_keys(TheirNames)),
+    Ours = sets:from_list([Name || {Name, _} <- OurNameData]),
+    Theirs = sets:from_list([Name || {Name, _} <- TheirNameData]),
     StaleNames = sets:subtract(Ours, Theirs),
-    [ dict:fetch(Name, OurNames) || Name <- set:to_list(StaleNames) ].
+    sets:to_list(StaleNames).
 
 remove_node(Node) ->
     ets:select_delete(?NGPROC_NAMES,
-                      [{list_to_tuple([reg, '_', '$1', '_']),
+                      [{list_to_tuple([reg, '_', '$1']),
+                        [{'=:=',{node,'$1'},Node}],
+                        [true]},
+                       {list_to_tuple([rev, {'$1', '_'}]),
                         [{'=:=',{node,'$1'},Node}],
                         [true]}]).
+
+-spec dead_nodes([node()]) -> [node()].
+dead_nodes(NodesToKeep) ->
+    %% this node() is never dead.
+    ets:foldl(fun (#reg{pid=P}, DropSet) when node(P) =/= node() ->
+                      Node = node(P),
+                      case lists:member(Node, NodesToKeep) of
+                          true -> DropSet;
+                          false -> ordsets:add_element(Node, DropSet)
+                      end;
+                  (_, Acc) -> Acc
+              end,
+              ordsets:new(),
+              ?NGPROC_NAMES).
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
+ensure_monitor(Pid) when node(Pid) =:= node() ->
+    case ets:lookup(?NGPROC_NAMES, Pid) of
+        [#mon{pid=Pid}] ->
+            ok;
+        [] ->
+            ets:insert(?NGPROC_NAMES,
+                       #mon{pid=Pid,
+                            ref=erlang:monitor(process, Pid)}),
+            ok
+    end.
+
+-spec names(pid()) -> [ngproc:name()].
+names(Pid) ->
+    ets:select(?NGPROC_NAMES,
+               [{list_to_tuple([rev, {'$1', '$2'}]),
+                 [{'=:=','$1',{const, Pid}}],
+                 ['$2']}]).
+
+num_names(Pid) ->
+    ets:select(?NGPROC_NAMES,
+               [{list_to_tuple([rev, {'$1', '_'}]),
+                 [{'=:=','$1',{const, Pid}}],
+                 [true]}]).
+
+cleanup_pid(Pid) ->
+    Names = names(Pid),
+    cleanup_pid(Pid, Names).
+
+cleanup_pid(Pid, Names) ->
+    [ begin
+          ets:delete(?NGPROC_NAMES, Name),
+          ets:delete(?NGPROC_NAMES, {Pid, Name}),
+          ok
+      end
+      || Name <- Names],
+    ets:delete(?NGPROC_NAMES, Pid),
+    ok.
+
+demonitor(Pid) ->
+    case ets:lookup(?NGPROC_NAMES, Pid) of
+        [#mon{pid=Pid, ref=Ref}] ->
+            ets:delete(?NGPROC_NAMES, Pid),
+            erlang:demonitor(Ref, [flush]),
+            ok;
+        [] ->
+            ok
+    end.
+
+maybe_demonitor(Pid)
+  when is_pid(Pid), node(Pid) =:= node() ->
+    case names(Pid) of
+        [] ->
+            demonitor(Pid);
+        _ ->
+            ok
+    end;
+maybe_demonitor(Pid)
+  when is_pid(Pid), node(Pid) =/= node() ->
+    ok.
+
+compare(ToNode) ->
+    {v1, MyNames} = all_names(),
+    MN = dict:from_list(MyNames),
+    MNs = sets:from_list(dict:fetch_keys(MN)),
+    {v1, TheirNames} = rpc:call(ToNode, ?MODULE, all_names, []),
+    TN = dict:from_list(TheirNames),
+    TNs = sets:from_list(dict:fetch_keys(TN)),
+    [{missing_from, ToNode, sets:to_list(sets:subtract(MNs, TNs))},
+     {missing_from, node(), sets:to_list(sets:subtract(TNs, MNs))},
+     {different_values,
+      dict:fold(fun (K, V, Acc) ->
+                        case dict:fetch(K, TN) of
+                            V -> Acc;
+                            Vp -> [{K, V, Vp} | Acc]
+                        end
+                end,
+                [],
+                MN)}].
+                                 

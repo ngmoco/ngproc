@@ -38,15 +38,15 @@ whereis(Name) ->
 -spec register(ngproc:name(), pid()) ->
                       'ok' | {duplicate, pid()}.
 register(Name, Pid) ->
-    ngproc_mgr:register(Name, Pid).
+    ngproc_mgr:register(ngproc, Name, Pid).
 
 -spec reregister(ngproc:name(), pid()) -> 'ok'.
 reregister(Name, NewPid) ->
-    ngproc_mgr:reregister(Name, NewPid).
+    ngproc_mgr:reregister(ngproc, Name, NewPid).
 
 -spec unregister(ngproc:name()) -> 'ok'.
 unregister(Name) ->
-    ngproc_mgr:unregister(Name).
+    ngproc_mgr:unregister(ngproc, Name).
 
 %%====================================================================
 %% Internal functions
