@@ -129,7 +129,7 @@ handle_leader_call({register, Name, Pid}, _From, _CI, S = #state{}) ->
         {duplicate, CanonicalPid} ->
             {reply,
              {duplicate, CanonicalPid},
-             {fixup, {Name, CanonicalPid}},
+             {fixups, duplicate_reg, [{register, Name, CanonicalPid}]},
              S}
     end;
 handle_leader_call({reregister, Name, NewPid}, _From, _CI, S) ->
@@ -174,13 +174,20 @@ from_leader({unregister, Name}, _CI, S) ->
     {ok, S};
 
 %% FIXUP
-from_leader({fixups, Fixups}, _CI, S) ->
+from_leader({fixups, _Reason, Fixups}, _CI, S) ->
     [ fixup(F) || F <- Fixups ],
     {ok, S};
 
-from_leader({remove_node, Node}, _CI, S) ->
-    ngproc_lib:remove_node(Node),
+from_leader({remove_node, Node}, _CI, S) when node =/= node() ->
+    case node() =:= Node of
+        true ->
+            ?ERR("Leader ordered us to remove ourselves. "
+                 "Wait, are those neurotoxin emitters?", []);
+        false ->
+            ngproc_lib:remove_node(Node)
+    end,
     {ok, S};
+
 
 from_leader({sync, {v1, SyncTag, FromNode}, Op},
             CI, S = #state{sync_tag=OurSyncTag})
@@ -217,11 +224,17 @@ handle_cast(_Msg, _CI, S) ->
     {ok, S}.
 
 
-handle_info({nodedown, Node, _InfoList}, CI, S) ->
+handle_info({nodedown, Node, InfoList}, CI, S) ->
     case gl_async_bully:role(CI) of
         leader ->
-            ngproc_lib:remove_node(Node),
-            gl_async_bully:broadcast({from_leader,{remove_node, Node}}, CI);
+            case proplists:get_value(?MODULE, InfoList) of
+                {playing_dead, _} -> ignore;
+                _ ->
+                    ?INFO("Leader ordering removal of ~p due to ~p.",
+                          [Node, InfoList]),
+                    ngproc_lib:remove_node(Node),
+                    gl_async_bully:to_followers({remove_node, Node}, CI)
+            end;
         _ -> ok
     end,
     {ok, S};
@@ -271,12 +284,8 @@ code_change(_OldVsn, S, _Extra) ->
 %% Leader handling sync from client
 handle_sync(FromNode, {sync_names_reply, NameData},
             CI, S = #state{resolver = R}) ->
-    {SyncUS,
-     {InSync,
-      Updated,
-      Resolved,
-      Dropped}} = timer:tc(ngproc_lib, sync_with, [FromNode, NameData, R]),
-      %% XXX - must rebroadcast sync decisions.
+    {SyncUS, {InSync, Updated, Resolved, Dropped, Locals}} =
+        timer:tc(fun calculate_sync/3, [FromNode, NameData, R]),
     ?INFO("Synced with ~p in ~pus:~n~p~n",
           [FromNode, SyncUS,
            [{accepted, length(InSync)},
@@ -284,13 +293,14 @@ handle_sync(FromNode, {sync_names_reply, NameData},
             {resolved, length(Resolved)},
             {removed, length(Dropped)}]]),
     gl_async_bully:to_follower(FromNode,
-                               {fixups, Resolved}, CI),
+                               {fixups, sync_yours, Resolved ++ Locals}, CI),
     gl_async_bully:to_other_followers(FromNode,
-                                      {fixups,
+                                      {fixups, sync_other,
                                        InSync ++ Updated ++
                                            Resolved ++ Dropped},
                                       CI),
     {ok, S};
+%% Client receives sync_names msg from leader
 handle_sync(FromNode, sync_names, _CI,
             State = #state{name = Name, sync_tag=SyncTag}) ->
     erlang:send({Name, FromNode},
@@ -301,6 +311,10 @@ handle_sync(FromNode, sync_names, _CI,
 sync_names_reply(SyncTag) ->
     {sync, {v1, SyncTag, node()},
      {sync_names_reply, ngproc_lib:local_names()}}.
+
+%%--------------------------------------------------------------------
+%%% Sync helpers. (XXX move to ngproc_lib?)
+%%--------------------------------------------------------------------
 
 fixup({register, Name, Pid}) ->
     case ngproc_lib:reg_for(Name) of
@@ -329,3 +343,14 @@ fixup({unregister, Name}) ->
 format_status(_Fmt, S = #state{resolver = R}) ->
     [{resolver, R},
      {state, S}].
+
+calculate_sync(FromNode, NameData, R) ->
+    {InSync,
+     Updated,
+     Conflicts,
+     Dropped} = ngproc_lib:sync_actions(FromNode, NameData),
+    lists:foreach(fun fixup/1, Updated),
+    lists:foreach(fun fixup/1, Dropped),
+    Resolved = ngproc_lib:resolve_names(Conflicts, R),
+    Locals = [{register, N, P} || {N,P} <- ngproc_lib:local_names()],
+    {InSync, Updated, Resolved, Dropped, Locals}.

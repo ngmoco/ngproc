@@ -30,14 +30,14 @@
          ,names_for_node/1
          ,remove/2
          ,reg_for/1
-         ,sync_with/3
+         ,sync_actions/2
          ,remove_node/1
          ,dead_nodes/1
          ,cleanup_pid/1
          ,compare/1
         ]).
 
--export([sync_actions/2]).
+-export([resolve_names/2]).
 
 %%
 %% NGPROC_NAMES table records:
@@ -151,19 +151,18 @@ unregister(Name) ->
     end,
     unregistered.
 
--spec all_names() -> {'v1', ngproc:namedata()}.
+-spec all_names() -> ngproc:namedata().
 all_names() ->
-    {v1,
-     ets:select(?NGPROC_NAMES,
-                [{list_to_tuple([reg, '$1', '$2']),
-                  [],
-                  [{{'$1','$2'}}]}])}.
+    ets:select(?NGPROC_NAMES,
+               [{list_to_tuple([reg, '$1', '$2']),
+                 [],
+                 [{{'$1','$2'}}]}]).
                 %% ets:fun2ms(fun (#reg{name=Name,pid=Pid}) ->
                 %%                    {Name,Pid}
                 %%            end))}.
 
--spec local_names() -> {'v1', ngproc:namedata()}.
-local_names() -> {v1, names_for_node(node())}.
+-spec local_names() -> ngproc:namedata().
+local_names() -> names_for_node(node()).
 
 -spec names_for_node(node()) -> ngproc:namedata().
 names_for_node(Node) ->
@@ -203,32 +202,19 @@ resolve_names(NameData, Resolver) ->
 %% Missing - names local has that remote doesn't
 %% Added - names remote has that we don't
 %% Similar - names in common
--spec sync_with(node(), {'v1', ngproc:namedata()},
-                ngproc_resolver()) ->
-                       {InSync::ngproc:namedata(),
-                        Update::ngproc:namedata(),
+-spec sync_actions(node(), ngproc:namedata()) ->
+                       {InSync::[{register, ngproc:name(), pid()}],
+                        Update::[{register, ngproc:name(), pid()}],
                         Conflict::[{Sync::ngproc:nameinfo(),
                                     Existing::ngproc:nameinfo()}],
-                        Dropped::ngproc:namedata()}.
-sync_with(Node, {v1, NameData}, Resolver) ->
-    {InSync,
-     Update,
-     Conflicts,
-     Dropped} = sync_actions(Node, {v1, NameData}),
-    update_names(Update),
-    remove_names(Dropped),
-    %% XXX - Terrible interface, will run in process and block.
-    Resolution = resolve_names(Conflicts, Resolver),
-    %% Ignore InSync names
-    {InSync, Update, Resolution, Dropped}.
-
-
-sync_actions(Node, {v1, NameData}) ->
+                        Dropped::[{unregister, ngproc:name(), pid()}]}.
+sync_actions(Node, NameData) ->
     Actions = lists:foldl(fun sync_one_name/2, [], NameData),
     {[{register, Name, Pid} || {same, {Name, Pid}} <- Actions],
      [{register, Name, Pid} || {accept, {Name, Pid}} <- Actions],
      [{NI, Conflict} || {resolve, NI, Conflict} <- Actions],
-     [{unregister, Name} || Name <- stale_names(NameData, names_for_node(Node))]
+     [{unregister, Name}
+      || Name <- stale_names(Node, NameData, names_for_node(Node))]
     }.
 
 sync_one_name({Name, Pid} = NI, Acc) ->
@@ -246,9 +232,11 @@ sync_one_name({Name, Pid} = NI, Acc) ->
             [{accept, NI} | Acc]
     end.
 
-stale_names(TheirNameData, OurNameData) ->
-    Ours = sets:from_list([Name || {Name, _} <- OurNameData]),
-    Theirs = sets:from_list([Name || {Name, _} <- TheirNameData]),
+stale_names(TheirNode, TheirNameData, OurNameData) ->
+    Ours = sets:from_list([Name || {Name, P} <- OurNameData,
+                                   node(P) =:= TheirNode]),
+    Theirs = sets:from_list([Name || {Name, P} <- TheirNameData,
+                            node(P) =:= TheirNode]),
     StaleNames = sets:subtract(Ours, Theirs),
     sets:to_list(StaleNames).
 
@@ -340,21 +328,21 @@ maybe_demonitor(Pid)
     ok.
 
 compare(ToNode) ->
-    {v1, MyNames} = all_names(),
+    MyNames = all_names(),
     MN = dict:from_list(MyNames),
     MNs = sets:from_list(dict:fetch_keys(MN)),
-    {v1, TheirNames} = rpc:call(ToNode, ?MODULE, all_names, []),
+    TheirNames = rpc:call(ToNode, ?MODULE, all_names, []),
     TN = dict:from_list(TheirNames),
     TNs = sets:from_list(dict:fetch_keys(TN)),
     [{missing_from, ToNode, sets:to_list(sets:subtract(MNs, TNs))},
      {missing_from, node(), sets:to_list(sets:subtract(TNs, MNs))},
      {different_values,
-      dict:fold(fun (K, V, Acc) ->
-                        case dict:fetch(K, TN) of
-                            V -> Acc;
-                            Vp -> [{K, V, Vp} | Acc]
+      lists:foldl(fun (K, Acc) ->
+                        case {dict:fetch(K, MN),
+                              dict:fetch(K, TN)} of
+                            {V,V} -> Acc;
+                            {V,Vp} -> [{K, V, Vp} | Acc]
                         end
                 end,
                 [],
-                MN)}].
-                                 
+                sets:to_list(sets:intersection(MNs,TNs)))}].
