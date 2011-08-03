@@ -35,6 +35,7 @@
          ,dead_nodes/1
          ,cleanup_pid/1
          ,compare/1
+         ,num_names/1
         ]).
 
 -export([resolve_names/2]).
@@ -286,10 +287,10 @@ names(Pid) ->
                  ['$2']}]).
 
 num_names(Pid) ->
-    ets:select(?NGPROC_NAMES,
-               [{list_to_tuple([rev, {'$1', '_'}]),
-                 [{'=:=','$1',{const, Pid}}],
-                 [true]}]).
+    ets:select_count(?NGPROC_NAMES,
+                     [{list_to_tuple([rev, {'$1', '_'}]),
+                       [{'=:=','$1',{const, Pid}}],
+                       [true]}]).
 
 cleanup_pid(Pid) ->
     Names = names(Pid),
