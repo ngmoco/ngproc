@@ -72,7 +72,8 @@ register(Server, Name, Pid) when is_pid(Pid)->
     %% Local check for existing registration - bail out early?
     case ngproc_lib:whereis(Name) of
         undefined ->
-            gl_async_bully:leader_call(Server, {register, Name, Pid});
+            gl_async_bully:leader_call(Server, {register, Name, Pid},
+                                       local_sync);
         Pid ->
             ok;
         OldPid when is_pid(OldPid) ->
@@ -82,11 +83,14 @@ register(Server, Name, Pid) when is_pid(Pid)->
 -spec reregister(Server::atom(), ngproc:name(), pid()) ->
                         'ok' | {'error', 'not_registered'}.
 reregister(Server, Name, NewPid) when is_pid(NewPid) ->
-    gl_async_bully:leader_call(Server, {reregister, Name, NewPid}).
+    gl_async_bully:leader_call(Server,
+                               {reregister, Name, NewPid},
+                               local_sync).
 
 -spec unregister(Server::atom(), ngproc:name()) -> 'ok'.
 unregister(Server, Name) ->
-    gl_async_bully:leader_call(Server, {unregister, Name}).
+    gl_async_bully:leader_call(Server, {unregister, Name},
+                               local_sync).
 
 -spec start_link(Server::atom(), ngproc:resolver()) ->
                         {'ok', pid()} |
