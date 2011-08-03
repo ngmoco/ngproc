@@ -1,0 +1,172 @@
+
+12:36:09.476 Trace started from 'dbg@gir.local'.
+
+%% Local node is considered to be 'foo@gir.local'
+
+%% Shell process calls ngproc:register(shell, self()).
+12:40:43.441 <6851.31.0> > <6851.147.0> : {shell_cmd,<6851.31.0>,
+                                           {eval,
+                                            [{call,1,
+                                              {remote,1,
+                                               {atom,1,ngproc},
+                                               {atom,1,register}},
+                                              [{atom,1,shell},
+                                               {call,1,{atom,1,self},[]}]}]},
+                                           cmd}
+
+
+%% Local ngproc receives leader_call from <0.147.0>
+12:40:43.445 <6851.58.0> < {'$gen_sync_all_state_event',
+                               {<6851.147.0>,#Ref<6851.0.0.282>},
+                               {leader_call,local_sync,
+                                   {register,shell,<6851.147.0>}}}
+
+%% Local ngproc forwards register op to leader on 'asdf@gir.local'
+12:40:43.445 <6851.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_sync_all_state_event',
+                                                        {<6851.147.0>,
+                                                         #Ref<6851.0.0.282>},
+                                                        {leader_call,
+                                                         local_sync,
+                                                         {register,shell,
+                                                          <6851.147.0>}}}
+
+
+%% Leader ngproc receives register op.
+12:40:43.446 <6854.58.0> < {'$gen_sync_all_state_event',
+                               {<6851.147.0>,#Ref<6851.0.0.282>},
+                               {leader_call,local_sync,
+                                   {register,shell,<6851.147.0>}}}
+
+
+%% Leader ngproc processed op and broadcasts reply.
+
+%% Leader ngproc sends origin node ngproc first broadcast with extra
+%% instructions to reply to originator process (<0.147.0> -- ok)
+12:40:43.446 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {register,shell,
+                                                         <6851.147.0>},
+                                                        {local_sync_reply,
+                                                         {<6851.147.0>,
+                                                          #Ref<6851.0.0.282>},
+                                                         ok}}}
+
+%% Leader ngproc notifies other nodes of registration
+12:40:43.446 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {register,shell,
+                                                         <6851.147.0>}}}
+
+%% ngproc/foo@gir.local receives registration broadcast
+12:40:43.446 <6851.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {register,shell,<6851.147.0>},
+                                   {local_sync_reply,
+                                       {<6851.147.0>,#Ref<6851.0.0.282>},
+                                       ok}}}
+
+%% ngproc/foo@gir.local replies to originator
+12:40:43.446 <6851.58.0> > <6851.147.0> : {#Ref<6851.0.0.282>,ok}
+
+%% internal shell messaging
+12:40:43.447 <6851.31.0> < {shell_rep,<6851.147.0>,{value,ok,[],[]}}
+
+%% internal shell messaging
+12:40:43.447 <6851.158.0> > <6851.30.0> : {io_request,<6851.158.0>,
+                                           <6851.30.0>,
+                                           {get_until,unicode,
+                                            [40,"foo@gir.local",41,"14",62,32],
+                                            erl_scan,tokens,
+                                            [1]}}
+
+%% ngproc/bar@gir.local receives registration broadcast.
+12:40:43.447 <6852.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {register,shell,<6851.147.0>}}}
+
+%% ngproc timers
+12:40:43.803 <6852.58.0> < periodically
+
+%% ngproc timers
+12:40:47.996 <6851.58.0> < periodically
+
+%% ngproc timers
+12:40:48.916 <6854.58.0> < periodically
+
+%% ngproc leader / asdf@gir.local broadcasts a status query.
+12:40:48.916 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,397688,917773},
+                                                          1}}}}
+
+%% ngproc leader / asdf@gir.local broadcasts a status query.
+12:40:48.916 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,397688,917773},
+                                                          1}}}}
+
+%% ngproc/foo@gir.local receives status query
+12:40:48.917 <6851.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,397688,917773},1}}}}
+
+%% ngproc/bar@gir.local receives status query
+12:40:48.917 <6852.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,397688,917773},1}}}}
+
+%% originator / shell process evaluates 1/0. and crashes:
+
+%% ngproc/foo@gir.local receives DOWN monitor.
+12:40:57.665 <6851.58.0> < {'DOWN',#Ref<6851.0.0.283>,process,<6851.147.0>,
+                                   normal}
+
+%% ngproc/foo@gir.local notifies leader of dead process
+12:40:57.665 <6851.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {leader_cast,
+                                                         {'DOWN',
+                                                          <6851.147.0>}}}
+
+%% ngproc/asdf@gir.local receives forwarded 'DOWN'
+12:40:57.672 <6854.58.0> < {'$gen_all_state_event',
+                               {leader_cast,{'DOWN',<6851.147.0>}}}
+
+%% ngproc/asdf@gir.local broadcasts down result to followers
+12:40:57.672 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {'DOWN',
+                                                         <6851.147.0>}}}
+
+%% ngproc/asdf@gir.local broadcasts down result to followers
+%% (unnecessarily -- foo@gir.local was the node originating the
+%% 'DOWN', so this is a bug)
+12:40:57.672 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {'DOWN',
+                                                         <6851.147.0>}}}
+%% ngproc/foo@gir.local receives buggy 'DOWN'
+12:40:57.678 <6851.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {'DOWN',<6851.147.0>}}}
+
+
+%% ngproc/bar@gir.local receives 'DOWN' report from leader
+12:40:57.678 <6852.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {'DOWN',<6851.147.0>}}}
+
+12:41:23.239 
+Trace stopped.
+
