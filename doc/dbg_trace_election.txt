@@ -1,0 +1,690 @@
+%% Dramatis personae:
+%% dbg@gir.local -- debug trace node
+%% foo@gir.local -- ngproc node <6851.58.0>
+%% bar@gir.local -- ngproc node <6852.58.0>
+%% asdf@gir.local -- ngproc node and eventual leader. <6854.58.0>
+
+10:36:04.270 Trace started from 'dbg@gir.local'.
+
+%% ngproc timer
+10:37:43.217 <6851.58.0> < periodically
+
+%% ngproc timer
+10:37:45.925 <6854.58.0> < periodically
+
+%% net_kernel:connect node stuff
+10:37:45.926 <6854.58.0> > <6854.19.0> : {'$gen_call',
+                                          {<6854.58.0>,#Ref<6854.0.0.376>},
+                                          {connect,normal,'bar@gir.local'}}
+
+
+%% erlang node monitor -- up for asdf@gir.local
+10:37:45.928 <6852.58.0> < {nodeup,'asdf@gir.local',[{node_type,visible}]}
+
+%% bar -- status enqiry to asdf
+10:37:45.928 <6852.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'bar@gir.local',
+                                                         {norm_p,
+                                                          {'bar@gir.local',
+                                                           {1312,479336,
+                                                            575611},
+                                                           0}}}}
+
+%% erlang node monitor - up for bar@gir.loca
+10:37:45.928 <6854.58.0> < {nodeup,'bar@gir.local',[{node_type,visible}]}
+
+%% net_kernel:connect node stuff
+10:37:45.928 <6854.58.0> < {#Ref<6854.0.0.376>,true}
+
+%% asdf -- status enquiry to bar
+10:37:45.928 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          0}}}}
+
+%% asdf -- net_kernel connect to foo
+10:37:45.928 <6854.58.0> > <6854.19.0> : {'$gen_call',
+                                          {<6854.58.0>,#Ref<6854.0.0.381>},
+                                          {connect,normal,'foo@gir.local'}}
+
+%% asdf receives status enqiry from bar
+10:37:45.928 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'bar@gir.local',
+                             {norm_p,
+                              {'bar@gir.local',{1312,479336,575611},0}}}}
+
+%% asdf receives not_norm reply from query to bar
+10:37:45.928 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'bar@gir.local',
+                             {not_norm,
+                              {'asdf@gir.local',{1312,479325,925556},0}}}}
+
+%% bar receives status enqiry from asdf
+10:37:45.928 <6852.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,479325,925556},0}}}}
+
+%% bar informs asdf that it is now unhappy
+10:37:45.928 <6852.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'bar@gir.local',
+                                                         {not_norm,
+                                                          {'asdf@gir.local',
+                                                           {1312,479325,
+                                                            925556},
+                                                           0}}}}
+
+%% asdf noticies foo is alive
+10:37:45.931 <6854.58.0> < {nodeup,'foo@gir.local',[{node_type,visible}]}
+
+%% net_kernel bits
+10:37:45.931 <6854.58.0> < {#Ref<6854.0.0.381>,true}
+
+%% asdf queries foo's status
+10:37:45.931 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          0}}}}
+
+%% asdf informs bar that it is normal in an election it won
+10:37:45.931 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          0}}}}
+
+%% asdf ignores bar's status enquiry
+10:37:45.931 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) ~p: ignored ~p~n",
+                                             [<6854.58.0>,gl_async_bully,438,
+                                              norm,
+                                              {gl_async_bully,
+                                               'bar@gir.local',
+                                               {norm_p,
+                                                {'bar@gir.local',
+                                                 {1312,479336,575611},
+                                                 0}}}]}}}
+
+%% asdf plays alive to bar
+10:37:45.931 <6854.58.0> > {ngproc,'bar@gir.local'} : {nodeup,
+                                                       'asdf@gir.local',
+                                                       [{gl_async_bully,
+                                                         {playing_alive,
+                                                          'asdf@gir.local'}}]}
+
+%% asdf plays alive to foo
+10:37:45.931 <6854.58.0> > {ngproc,'foo@gir.local'} : {nodeup,
+                                                       'asdf@gir.local',
+                                                       [{gl_async_bully,
+                                                         {playing_alive,
+                                                          'asdf@gir.local'}}]}
+
+%% asdf has started an election, attempts to capture bar
+10:37:45.931 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {halt,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          1}}}}
+
+%% foo notices asdf is alive
+10:37:45.931 <6851.58.0> < {nodeup,'asdf@gir.local',[{node_type,visible}]}
+
+%% foo enquires of asdf's status
+10:37:45.931 <6851.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'foo@gir.local',
+                                                         {norm_p,
+                                                          {'foo@gir.local',
+                                                           {1312,479343,
+                                                            217212},
+                                                           0}}}}
+
+%% foo receives status enquiry from asdf
+10:37:45.931 <6851.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,479325,925556},0}}}}
+
+%% foo informs asdf that it is not normal
+10:37:45.931 <6851.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'foo@gir.local',
+                                                         {not_norm,
+                                                          {'asdf@gir.local',
+                                                           {1312,479325,
+                                                            925556},
+                                                           0}}}}
+
+%% foo gets a faked playing-alive monitor from asdf
+10:37:45.931 <6851.58.0> < {nodeup,'asdf@gir.local',
+                               [{gl_async_bully,
+                                    {playing_alive,'asdf@gir.local'}}]}
+
+%% foo queries asdf's status
+10:37:45.931 <6851.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'foo@gir.local',
+                                                         {norm_p,
+                                                          {'foo@gir.local',
+                                                           {1312,479343,
+                                                            217212},
+                                                           0}}}}
+
+%% bar tells asdf it isn't normal
+10:37:45.932 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'bar@gir.local',
+                             {not_norm,
+                              {'asdf@gir.local',{1312,479325,925556},0}}}}
+
+%% asdf receives a status enquiry from bar
+10:37:45.932 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'bar@gir.local',
+                             {norm_p,
+                              {'bar@gir.local',{1312,479336,575611},0}}}}
+
+%% asdf ignores bar's not_norm reply (due to elec2 state? waiting for
+%% halt reply?)
+10:37:45.932 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) ~p: ignored ~p~n",
+                                             [<6854.58.0>,gl_async_bully,438,
+                                              elec2,
+                                              {gl_async_bully,
+                                               'bar@gir.local',
+                                               {not_norm,
+                                                {'asdf@gir.local',
+                                                 {1312,479325,925556},
+                                                 0}}}]}}}
+
+%% asdf ignores bar's status enquiry
+10:37:45.932 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) ~p: ignored ~p~n",
+                                             [<6854.58.0>,gl_async_bully,438,
+                                              elec2,
+                                              {gl_async_bully,
+                                               'bar@gir.local',
+                                               {norm_p,
+                                                {'bar@gir.local',
+                                                 {1312,479336,575611},
+                                                 0}}}]}}}
+
+%% asdf receives status enquiry from foo
+10:37:45.932 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'foo@gir.local',
+                             {norm_p,
+                              {'foo@gir.local',{1312,479343,217212},0}}}}
+
+%% asdf receives not_norm status enquiry response from foo
+10:37:45.932 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'foo@gir.local',
+                             {not_norm,
+                              {'asdf@gir.local',{1312,479325,925556},0}}}}
+
+%% asdf receives duplicate status enquiry from foo -- bugbug?
+10:37:45.932 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'foo@gir.local',
+                             {norm_p,
+                              {'foo@gir.local',{1312,479343,217212},0}}}}
+
+%% asdf ignores status enquiry from foo
+10:37:45.933 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) ~p: ignored ~p~n",
+                                             [<6854.58.0>,gl_async_bully,438,
+                                              elec2,
+                                              {gl_async_bully,
+                                               'foo@gir.local',
+                                               {norm_p,
+                                                {'foo@gir.local',
+                                                 {1312,479343,217212},
+                                                 0}}}]}}}
+
+%% asdf ignores not_norm reply from foo
+10:37:45.933 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) ~p: ignored ~p~n",
+                                             [<6854.58.0>,gl_async_bully,438,
+                                              elec2,
+                                              {gl_async_bully,
+                                               'foo@gir.local',
+                                               {not_norm,
+                                                {'asdf@gir.local',
+                                                 {1312,479325,925556},
+                                                 0}}}]}}}
+
+%% bar receives status enquiry from asdf
+10:37:45.931 <6852.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,479325,925556},0}}}}
+
+%% bar see play-alive message from asdf
+10:37:45.931 <6852.58.0> < {nodeup,'asdf@gir.local',
+                               [{gl_async_bully,
+                                    {playing_alive,'asdf@gir.local'}}]}
+
+%% bar receives halt request from asdf
+10:37:45.931 <6852.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {halt,
+                              {'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% bar sends asdf a not_norm reply to status enquiry
+10:37:45.931 <6852.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'bar@gir.local',
+                                                         {not_norm,
+                                                          {'asdf@gir.local',
+                                                           {1312,479325,
+                                                            925556},
+                                                           0}}}}
+
+%% bar sends asdf a not_norm reply to status enquiry
+10:37:45.931 <6852.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'bar@gir.local',
+                                                         {norm_p,
+                                                          {'bar@gir.local',
+                                                           {1312,479336,
+                                                            575611},
+                                                           0}}}}
+
+%% net_kernel shenanigans
+10:37:45.931 <6852.58.0> > <6852.19.0> : {'$gen_call',
+                                          {<6852.58.0>,#Ref<6852.0.0.315>},
+                                          {connect,normal,'foo@gir.local'}}
+
+%% asdf ignores status enquriy from foo
+10:37:45.933 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) ~p: ignored ~p~n",
+                                             [<6854.58.0>,gl_async_bully,438,
+                                              elec2,
+                                              {gl_async_bully,
+                                               'foo@gir.local',
+                                               {norm_p,
+                                                {'foo@gir.local',
+                                                 {1312,479343,217212},
+                                                 0}}}]}}}
+
+%% net_kernel can't connect (bar attempt to connect to foo - blocked
+%% by cookies)
+10:37:45.937 <6852.58.0> < {#Ref<6852.0.0.315>,false}
+
+%% Bar acknowledges asdf's halt request
+10:37:45.937 <6852.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'bar@gir.local',
+                                                         {ack,
+                                                          {'asdf@gir.local',
+                                                           {1312,479325,
+                                                            925556},
+                                                           1}}}}
+
+%% asdf receives halt ack from bar
+10:37:45.937 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'bar@gir.local',
+                             {ack,{'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% asdf attempts to halt foo
+10:37:45.937 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {halt,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          1}}}}
+
+%% foo receives halt from asdf
+10:37:45.938 <6851.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {halt,
+                              {'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% foo acknowledges halt to asdf
+10:37:45.938 <6851.58.0> > {ngproc,'asdf@gir.local'} : {'$gen_all_state_event',
+                                                        {gl_async_bully,
+                                                         'foo@gir.local',
+                                                         {ack,
+                                                          {'asdf@gir.local',
+                                                           {1312,479325,
+                                                            925556},
+                                                           1}}}}
+
+%% asdf receives halt acknowledgement from foo
+10:37:45.938 <6854.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'foo@gir.local',
+                             {ack,{'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% Having halted all other candidates, asdf broadcasts leadership to
+%% acks, in this case bar
+10:37:45.938 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {leader,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          1}}}}
+
+%% asdf leader broadcast to foo
+10:37:45.938 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {leader,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          1}}}}
+
+%% asdf begins cluster sync.
+10:37:45.938 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) I ~p was elected. Starting new sync: ~p~n",
+                                             [<6854.58.0>,ngproc_mgr,115,
+                                              {ngproc,'asdf@gir.local'},
+                                              #Ref<6854.0.0.394>]}}}
+
+%% asdf sends sync start to bar
+10:37:45.938 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {sync,
+                                                         {v1,
+                                                          #Ref<6854.0.0.394>,
+                                                          'asdf@gir.local'},
+                                                         sync_names}}}
+
+%% asdf sends sync start to foo
+10:37:45.938 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {sync,
+                                                         {v1,
+                                                          #Ref<6854.0.0.394>,
+                                                          'asdf@gir.local'},
+                                                         sync_names}}}
+
+%% foo replies to asdf's sync request with no local names
+10:37:45.940 <6854.58.0> < {sync,{v1,#Ref<6854.0.0.394>,'foo@gir.local'},
+                                 {sync_names_reply,[]}}
+
+%% bar receives leader broadcast
+10:37:45.941 <6852.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {leader,
+                              {'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% bar receives sync start
+10:37:45.941 <6852.58.0> < {'$gen_all_state_event',
+                            {from_leader,'asdf@gir.local',
+                             {sync,
+                              {v1,#Ref<6854.0.0.394>,'asdf@gir.local'},
+                              sync_names}}}
+
+%% bar notes new leadersip
+10:37:45.941 <6852.58.0> > error_logger : {notify,
+                                           {info_msg,<6852.47.0>,
+                                            {<6852.58.0>,
+                                             "(~p ~p:~p) Acknowledged (possibly) new leader: ~p~n",
+                                             [<6852.58.0>,ngproc_mgr,125,
+                                              'asdf@gir.local']}}}
+
+%% bar notes start of sync
+10:37:45.941 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) Synced with ~p in ~pus:~n~p~n~n",
+                                             [<6854.58.0>,ngproc_mgr,293,
+                                              'foo@gir.local',391,
+                                              [{accepted,0},
+                                               {updated,0},
+                                               {resolved,0},
+                                               {removed,0}]]}}}
+
+%% bar sends sync contents to asdf - no local names
+10:37:45.941 <6852.58.0> > {ngproc,'asdf@gir.local'} : {sync,
+                                                        {v1,
+                                                         #Ref<6854.0.0.394>,
+                                                         'bar@gir.local'},
+                                                        {sync_names_reply,[]}}
+
+%% bar receives sync completion from asdf - no fixups
+10:37:45.942 <6852.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {fixups,sync_other,[]}}}
+
+%% foo receives leader broadcast from asdf
+10:37:45.940 <6851.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {leader,
+                              {'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% foo receives sync start from asdf
+10:37:45.940 <6851.58.0> < {'$gen_all_state_event',
+                            {from_leader,'asdf@gir.local',
+                             {sync,
+                              {v1,#Ref<6854.0.0.394>,'asdf@gir.local'},
+                              sync_names}}}
+
+%% foo notes new leader
+10:37:45.940 <6851.58.0> > error_logger : {notify,
+                                           {info_msg,<6851.47.0>,
+                                            {<6851.58.0>,
+                                             "(~p ~p:~p) Acknowledged (possibly) new leader: ~p~n",
+                                             [<6851.58.0>,ngproc_mgr,125,
+                                              'asdf@gir.local']}}}
+
+%% foo send sync reply to asdf - no local names
+10:37:45.940 <6851.58.0> > {ngproc,'asdf@gir.local'} : {sync,
+                                                        {v1,
+                                                         #Ref<6854.0.0.394>,
+                                                         'foo@gir.local'},
+                                                        {sync_names_reply,[]}}
+
+%% asdf sends sync fixups for foo
+10:37:45.941 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {fixups,sync_yours,
+                                                         [{register,
+                                                           {relay,10},
+                                                           <6854.61.0>},
+                                                          {register,
+                                                           {relay,11},
+                                                           <6854.70.0>},
+                                                          {register,
+                                                           {relay,12},
+                                                           <6854.74.0>},
+                                                          {register,
+                                                           {relay,13},
+                                                           <6854.75.0>},
+                                                          {register,
+                                                           {relay,14},
+                                                           <6854.76.0>},
+                                                          {register,
+                                                           {relay,15},
+                                                           <6854.77.0>},
+                                                          {register,
+                                                           {relay,16},
+                                                           <6854.78.0>},
+                                                          {register,
+                                                           {relay,17},
+                                                           <6854.79.0>},
+                                                          {register,
+                                                           {relay,18},
+                                                           <6854.80.0>},
+                                                          {register,
+                                                           {relay,19},
+                                                           <6854.81.0>},
+                                                          {register,
+                                                           {relay,20},
+                                                           <6854.82.0>}]}}}
+
+%% asdf receives sync response from bar
+10:37:45.942 <6854.58.0> < {sync,{v1,#Ref<6854.0.0.394>,'bar@gir.local'},
+                                 {sync_names_reply,[]}}
+
+%% asdf notifies bar of empty sync fixups -- bugbug
+10:37:45.942 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {fixups,sync_other,
+                                                         []}}}
+
+%% asdf notes sync completion with bar
+10:37:45.942 <6854.58.0> > error_logger : {notify,
+                                           {info_msg,<6854.47.0>,
+                                            {<6854.58.0>,
+                                             "(~p ~p:~p) Synced with ~p in ~pus:~n~p~n~n",
+                                             [<6854.58.0>,ngproc_mgr,293,
+                                              'bar@gir.local',44,
+                                              [{accepted,0},
+                                               {updated,0},
+                                               {resolved,0},
+                                               {removed,0}]]}}}
+
+%% asdf sends sync fixups to bar
+10:37:45.943 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {fixups,sync_yours,
+                                                         [{register,
+                                                           {relay,10},
+                                                           <6854.61.0>},
+                                                          {register,
+                                                           {relay,11},
+                                                           <6854.70.0>},
+                                                          {register,
+                                                           {relay,12},
+                                                           <6854.74.0>},
+                                                          {register,
+                                                           {relay,13},
+                                                           <6854.75.0>},
+                                                          {register,
+                                                           {relay,14},
+                                                           <6854.76.0>},
+                                                          {register,
+                                                           {relay,15},
+                                                           <6854.77.0>},
+                                                          {register,
+                                                           {relay,16},
+                                                           <6854.78.0>},
+                                                          {register,
+                                                           {relay,17},
+                                                           <6854.79.0>},
+                                                          {register,
+                                                           {relay,18},
+                                                           <6854.80.0>},
+                                                          {register,
+                                                           {relay,19},
+                                                           <6854.81.0>},
+                                                          {register,
+                                                           {relay,20},
+                                                           <6854.82.0>}]}}}
+
+%% asdf sends sync fixups to foo
+10:37:45.943 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {from_leader,
+                                                        'asdf@gir.local',
+                                                        {fixups,sync_other,
+                                                         []}}}
+
+%% bar receives sync fixups from asdf
+10:37:45.948 <6852.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {fixups,sync_yours,
+                                       [{register,{relay,10},<6854.61.0>},
+                                        {register,{relay,11},<6854.70.0>},
+                                        {register,{relay,12},<6854.74.0>},
+                                        {register,{relay,13},<6854.75.0>},
+                                        {register,{relay,14},<6854.76.0>},
+                                        {register,{relay,15},<6854.77.0>},
+                                        {register,{relay,16},<6854.78.0>},
+                                        {register,{relay,17},<6854.79.0>},
+                                        {register,{relay,18},<6854.80.0>},
+                                        {register,{relay,19},<6854.81.0>},
+                                        {register,{relay,20},<6854.82.0>}]}}}
+
+%% foo receives sync fixups from asdf
+10:37:45.944 <6851.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {fixups,sync_yours,
+                                       [{register,{relay,10},<6854.61.0>},
+                                        {register,{relay,11},<6854.70.0>},
+                                        {register,{relay,12},<6854.74.0>},
+                                        {register,{relay,13},<6854.75.0>},
+                                        {register,{relay,14},<6854.76.0>},
+                                        {register,{relay,15},<6854.77.0>},
+                                        {register,{relay,16},<6854.78.0>},
+                                        {register,{relay,17},<6854.79.0>},
+                                        {register,{relay,18},<6854.80.0>},
+                                        {register,{relay,19},<6854.81.0>},
+                                        {register,{relay,20},<6854.82.0>}]}}}
+
+%% foo receives empty (bugbug) sync fixups from asdf
+10:37:45.944 <6851.58.0> < {'$gen_all_state_event',
+                               {from_leader,'asdf@gir.local',
+                                   {fixups,sync_other,[]}}}
+
+%% ngproc timer
+10:37:46.575 <6852.58.0> < periodically
+
+%% ngproc timer
+10:37:53.216 <6851.58.0> < periodically
+
+%% ngproc timer
+10:37:55.925 <6854.58.0> < periodically
+
+%% asdf being the leader sends bar a status enquiry
+10:37:55.925 <6854.58.0> > {ngproc,'bar@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          1}}}}
+
+%% asdf being the leader sends foo a status enquiry
+10:37:55.925 <6854.58.0> > {ngproc,'foo@gir.local'} : {'$gen_all_state_event',
+                                                       {gl_async_bully,
+                                                        'asdf@gir.local',
+                                                        {norm_p,
+                                                         {'asdf@gir.local',
+                                                          {1312,479325,925556},
+                                                          1}}}}
+
+%% bar receives status enquiry
+10:37:55.925 <6852.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,479325,925556},1}}}}
+
+%% foo receives status enquiry
+10:37:55.925 <6851.58.0> < {'$gen_all_state_event',
+                            {gl_async_bully,'asdf@gir.local',
+                             {norm_p,
+                              {'asdf@gir.local',{1312,479325,925556},1}}}}
+
+10:37:59.054 
+Trace stopped.
+
