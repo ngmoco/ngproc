@@ -38,7 +38,7 @@ Installation
 ------------
 
 Building ngproc
-_____________
+_______________
 
 Prerequisites:
 - Erlang R14B+
@@ -47,3 +47,15 @@ Prerequisites:
 #. rebar get-deps compile
 #. enjoy a well earned margarita
 
+
+Configuration
+_____________
+
+Add the list of nodes that will form the registry to your ``-config``
+file:
+
+    {ngproc,
+     [{cluster_nodes, ['aaa@host1.example.com',
+                       'bbb@host1.example.com',
+                       'aaa@host2.example.com']}
+     ]}
