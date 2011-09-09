@@ -25,6 +25,7 @@
          ,register/2
          ,reregister/2
          ,unregister/1
+         ,registered_names/0
         ]).
 
 %%====================================================================
@@ -47,6 +48,10 @@ reregister(Name, NewPid) ->
 -spec unregister(ngproc:name()) -> 'ok'.
 unregister(Name) ->
     ngproc_mgr:unregister(ngproc, Name).
+
+-spec registered_names() -> namedata().
+registered_names() ->
+    ngproc_lib:all_names().
 
 %%====================================================================
 %% Internal functions
