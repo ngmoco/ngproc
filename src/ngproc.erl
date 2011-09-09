@@ -32,20 +32,20 @@
 %% API
 %%====================================================================
 
--spec whereis(ngproc:name()) -> pid() | 'undefined'.
+-spec whereis(name()) -> pid() | 'undefined'.
 whereis(Name) ->
     ngproc_lib:whereis(Name).
 
--spec register(ngproc:name(), pid()) ->
+-spec register(name(), pid()) ->
                       'ok' | {duplicate, pid()}.
 register(Name, Pid) ->
     ngproc_mgr:register(ngproc, Name, Pid).
 
--spec reregister(ngproc:name(), pid()) -> 'ok'.
+-spec reregister(name(), pid()) -> 'ok'.
 reregister(Name, NewPid) ->
     ngproc_mgr:reregister(ngproc, Name, NewPid).
 
--spec unregister(ngproc:name()) -> 'ok'.
+-spec unregister(name()) -> 'ok'.
 unregister(Name) ->
     ngproc_mgr:unregister(ngproc, Name).
 
