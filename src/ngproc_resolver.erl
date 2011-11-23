@@ -10,17 +10,13 @@
 -include("ng_log.hrl").
 
 %% API
--export([resolve/3,
-         behaviour_info/1]).
+-export([resolve/3]).
+
+-callback resolve(ngproc:name(), pid(), pid()) -> pid().
 
 %%====================================================================
 %% API
 %%====================================================================
-
-behaviour_info(callbacks) ->
-    [{resolve,3}];
-behaviour_info(_) ->
-    undefined.
 
 -spec resolve(ngproc:name(), pid(), pid()) -> pid().
 resolve(Name, PidA, PidB) ->
