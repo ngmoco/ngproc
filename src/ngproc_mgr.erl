@@ -18,7 +18,6 @@
 
 -include("ng_log.hrl").
 -include("ngproc.hrl").
-%%-include_lib("gl_async_bully/include/gl_async_bully_specs.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% API
