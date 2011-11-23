@@ -2,7 +2,8 @@
 %% @copyright Geoff Cant
 %% @author Geoff Cant <nem@erlang.geek.nz>
 %% @version {@vsn}, {@date} {@time}
-%% @doc
+%% @doc The default resolver and resolver behaviour for resolving
+%% conflicting ngproc process registrations.
 %% @end
 %%%-------------------------------------------------------------------
 -module(ngproc_resolver).
