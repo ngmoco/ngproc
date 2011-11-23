@@ -19,7 +19,7 @@
 %%====================================================================
 
 -spec resolve(ngproc:name(), pid(), pid()) -> pid().
-resolve(Name, PidA, PidB) ->
+resolve(_Name, PidA, PidB) ->
     exit(PidA, kill),
     PidB.
 
